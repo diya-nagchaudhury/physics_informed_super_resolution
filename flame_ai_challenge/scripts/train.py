@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Training script for FLAME AI Challenge models."""
+"""Training script for the models."""
 
 import argparse
 import torch
@@ -17,7 +17,7 @@ from src.training.trainer import Trainer
 
 
 def parse_args():
-    """Parse command line arguments."""
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Train FLAME AI Challenge model')
     
     parser.add_argument('--model', type=str, default='residual',
@@ -65,7 +65,7 @@ def parse_args():
 
 
 def main():
-    """Main training function."""
+    """Driver function."""
     args = parse_args()
     
     # Create configuration
@@ -98,6 +98,9 @@ def main():
     if config.device == 'cuda' and not torch.cuda.is_available():
         print("CUDA not available, switching to CPU")
         config.device = 'cpu'
+    elif config.device == 'cpu':
+        print("Using CPU for training")
+    print(f"Using device: {config.device}")
     
     # Create datasets
     print("Loading datasets...")
