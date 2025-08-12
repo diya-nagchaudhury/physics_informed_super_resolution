@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluation script for FLAME AI Challenge models."""
+"""Evaluation script for the models."""
 
 import argparse
 import torch
@@ -17,6 +17,7 @@ from src.evaluation.evaluator import ModelEvaluator
 
 
 def parse_args():
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Evaluate FLAME AI Challenge model')
     
     parser.add_argument('--model', type=str, default='residual',
@@ -59,7 +60,7 @@ def parse_args():
 
 
 def main():
-    """Main evaluation function."""
+    """Driver function."""
     args = parse_args()
     
     # Create configuration
@@ -84,6 +85,9 @@ def main():
     if config.device == 'cuda' and not torch.cuda.is_available():
         print("CUDA not available, switching to CPU")
         config.device = 'cpu'
+    elif config.device == 'cpu':
+        print("Using CPU for evaluation")
+    print(f"Using device: {config.device}")
     
     # Load dataset
     print(f"Loading {args.split} dataset...")
@@ -127,26 +131,21 @@ def main():
         print(f"Error loading checkpoint: {e}")
         return
     
-    # Create evaluator
     evaluator = ModelEvaluator(model, config)
-    
-    # Run evaluation
     print("\nStarting evaluation...")
     
     if args.generate_report:
-        # Generate comprehensive report
         report_path = evaluator.generate_evaluation_report(data_loader)
         print(f"Comprehensive report generated: {report_path}")
         
     else:
-        # Standard evaluation
         metrics = evaluator.evaluate_dataset(
             data_loader, 
             save_individual_results=args.save_individual
         )
         
         # Print results
-        print("\n=== Evaluation Results ===")
+        print("\n=== Results ===")
         for metric_name, stats in metrics.items():
             print(f"\n{metric_name.upper()}:")
             print(f"  Mean: {stats['mean']:.6f}")
