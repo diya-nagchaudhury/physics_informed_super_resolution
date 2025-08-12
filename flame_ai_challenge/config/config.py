@@ -6,11 +6,10 @@ from typing import List, Tuple
 
 @dataclass
 class Config:
-    """Configuration class for the FLAME AI Challenge."""
-    model_name: str = 'physics'
+    """Configuration class"""
     # Data configuration
-    input_path: str = '/home/diya/Projects/flame_ai_challenge/dataset'
-    output_path: str = '/home/diya/Projects/flame_ai_challenge/outputs/'+ model_name
+    input_path: str = '/home/diya/Projects/physics_informed_super_resolution/flame_ai_challenge/dataset/'
+    output_path: str = '/home/diya/Projects/physics_informed_super_resolution/flame_ai_challenge/outputs/'
     
     # Normalization parameters
     mean: List[float] = None
@@ -39,11 +38,6 @@ class Config:
     calculate_psnr: bool = True
     calculate_ssim: bool = True
     calculate_energy_metrics: bool = True
-
-    # checkpoint directory
-    checkpoint_dir: str = '/home/diya/Projects/flame_ai_challenge/checkpoints'
-
-    
 
     def __post_init__(self):
         """Set default values after initialization."""

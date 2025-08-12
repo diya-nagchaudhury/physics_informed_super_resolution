@@ -52,44 +52,103 @@ class FlowFieldPlotter:
             
         return fig
     
-    def plot_flow_comparison(self, lr_tensor, hr_tensor, pred_tensor, channel_names=None, save_path: Optional[str] = None):
-        
+    def plot_flow_comparison(self, lr_tensor, hr_tensor, pred_tensor, sample_id, channel_names=None, save_path: Optional[str] = None):
         lr_np = lr_tensor.detach().cpu().numpy()
         hr_np = hr_tensor.detach().cpu().numpy()
         pred_np = pred_tensor.detach().cpu().numpy()
         
-        num_samples = lr_np.shape[0]
-        num_channels = lr_np.shape[1]
+        # Debug: Print shapes
+        # print(f"LR shape: {lr_np.shape}")
+        # print(f"HR shape: {hr_np.shape}")
+        # print(f"Pred shape: {pred_np.shape}")
+        
+        # Handle different tensor formats
+        if len(lr_np.shape) == 3:  # (channels, height, width)
+            num_channels, lr_h, lr_w = lr_np.shape
+            _, hr_h, hr_w = hr_np.shape
+            _, pred_h, pred_w = pred_np.shape
+            num_samples = 1  # Single sample
+            
+            # Reshape to add batch dimension: (1, channels, height, width)
+            lr_np = lr_np[np.newaxis, ...]
+            hr_np = hr_np[np.newaxis, ...]
+            pred_np = pred_np[np.newaxis, ...]
+            
+        elif len(lr_np.shape) == 4:  # (batch_size, channels, height, width)
+            num_samples, num_channels, lr_h, lr_w = lr_np.shape
+            _, _, hr_h, hr_w = hr_np.shape
+            _, _, pred_h, pred_w = pred_np.shape
+        else:
+            raise ValueError(f"Unexpected tensor shapes. LR: {lr_np.shape}, HR: {hr_np.shape}, Pred: {pred_np.shape}")
         
         if channel_names is None:
             channel_names = ["rho", "ux", "uy", "uz"]
         
-        fig, axes = plt.subplots(num_samples, num_channels * 3, 
+        # Ensure we don't exceed available channels
+        num_channels = min(num_channels, len(channel_names))
+        
+        fig, axes = plt.subplots(num_samples, num_channels * 3,
                                 figsize=(num_channels * 3 * 3, num_samples * 3))
         
         # Make axes always 2D for consistent indexing
         if num_samples == 1:
             axes = axes[np.newaxis, :]
+        if num_channels * 3 == 1:
+            axes = axes[:, np.newaxis]
         
         for i in range(num_samples):
             for c in range(num_channels):
-                vmin = min(lr_np[i, c].min(), hr_np[i, c].min(), pred_np[i, c].min())
-                vmax = max(lr_np[i, c].max(), hr_np[i, c].max(), pred_np[i, c].max())
+                # Extract channel data - now with correct indexing
+                lr_channel = lr_np[i, c, :, :]  # Shape: (lr_h, lr_w)
+                hr_channel = hr_np[i, c, :, :]  # Shape: (hr_h, hr_w)
+                pred_channel = pred_np[i, c, :, :]  # Shape: (pred_h, pred_w)
                 
-                # LR
-                axes[i, c].imshow(lr_np[i, c], cmap="viridis", vmin=vmin, vmax=vmax)
-                axes[i, c].set_title(f"LR {channel_names[c]}")
+                # Debug: Print individual channel shapes
+                # print(f"Sample {i}, Channel {c}:")
+                # print(f"  LR channel shape: {lr_channel.shape}")
+                # print(f"  HR channel shape: {hr_channel.shape}")
+                # print(f"  Pred channel shape: {pred_channel.shape}")
                 
-                # HR
-                axes[i, c + num_channels].imshow(hr_np[i, c], cmap="viridis", vmin=vmin, vmax=vmax)
-                axes[i, c + num_channels].set_title(f"HR {channel_names[c]}")
+                # Verify shapes are 2D
+                assert len(lr_channel.shape) == 2, f"LR channel should be 2D, got {lr_channel.shape}"
+                assert len(hr_channel.shape) == 2, f"HR channel should be 2D, got {hr_channel.shape}"
+                assert len(pred_channel.shape) == 2, f"Pred channel should be 2D, got {pred_channel.shape}"
                 
-                # Pred
-                axes[i, c + 2 * num_channels].imshow(pred_np[i, c], cmap="viridis", vmin=vmin, vmax=vmax)
-                axes[i, c + 2 * num_channels].set_title(f"Pred {channel_names[c]}")
+                try:
+                    # Calculate vmin/vmax for consistent scaling
+                    vmin = min(lr_channel.min(), hr_channel.min(), pred_channel.min())
+                    vmax = max(lr_channel.max(), hr_channel.max(), pred_channel.max())
+                    
+                    # LR - Shape should be (4, 4) based on your output
+                    im1 = axes[i, c * 3].imshow(lr_channel, cmap="viridis", vmin=vmin, vmax=vmax)
+                    axes[i, c * 3].set_title(f"LR {channel_names[c]} ({lr_channel.shape[0]}x{lr_channel.shape[1]})")
+                    axes[i, c * 3].axis('off')
+                    
+                    # HR - Shape should be (128, 128) based on your output
+                    im2 = axes[i, c * 3 + 1].imshow(hr_channel, cmap="viridis", vmin=vmin, vmax=vmax)
+                    axes[i, c * 3 + 1].set_title(f"HR {channel_names[c]} ({hr_channel.shape[0]}x{hr_channel.shape[1]})")
+                    axes[i, c * 3 + 1].axis('off')
+                    
+                    # Pred - Shape should be (128, 128) based on your output
+                    im3 = axes[i, c * 3 + 2].imshow(pred_channel, cmap="viridis", vmin=vmin, vmax=vmax)
+                    axes[i, c * 3 + 2].set_title(f"Pred {channel_names[c]} ({pred_channel.shape[0]}x{pred_channel.shape[1]})")
+                    axes[i, c * 3 + 2].axis('off')
+                    
+                    # Add colorbar to the last plot in each row
+                    if c == num_channels - 1:
+                        plt.colorbar(im3, ax=axes[i, c * 3:c * 3 + 3], shrink=0.6)
+                    
+                except Exception as e:
+                    print(f"Error processing sample {i}, channel {c}: {e}")
+                    # Create empty plots as fallback
+                    for offset in range(3):
+                        axes[i, c * 3 + offset].text(0.5, 0.5, f"Error:\n{str(e)}", 
+                                                ha='center', va='center', transform=axes[i, c * 3 + offset].transAxes)
+                        axes[i, c * 3 + offset].set_title(f"Error - {channel_names[c]}")
         
         plt.tight_layout()
-        plt.savefig(save_path, dpi=self.config.dpi, bbox_inches='tight')
+        if save_path:
+            plt.savefig(save_path, dpi=self.config.dpi, bbox_inches='tight')
         plt.close(fig)
 
     def plot_velocity_streamlines(self, data: torch.Tensor, title: str = "Velocity Streamlines",
