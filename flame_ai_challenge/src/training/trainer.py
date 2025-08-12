@@ -1,4 +1,4 @@
-"""Training module for FLAME AI Challenge models."""
+"""Training module for the models."""
 
 import torch
 import torch.nn as nn
@@ -17,7 +17,7 @@ from src.models.upsampling import PhysicsInformedUpsamplingModel
 
 
 class Trainer:
-    """Trainer class for FLAME AI Challenge models."""
+    """Trainer class for the models."""
     
     def __init__(self, model: nn.Module, config: Config, device: Optional[str] = None):
         """
