@@ -1,4 +1,4 @@
-"""Configuration module for FLAME AI Challenge."""
+"""Configuration module"""
 
 import os
 from dataclasses import dataclass

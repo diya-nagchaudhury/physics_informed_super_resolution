@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Visualization script for FLAME AI Challenge data and results."""
+"""Visualization script for results."""
 
 import argparse
 import torch
@@ -19,7 +19,7 @@ from src.visualization.energy_maps import EnergyMapGenerator
 
 
 def parse_args():
-    """Parse command line arguments."""
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Visualize FLAME AI Challenge data and results')
     
     parser.add_argument('--mode', type=str, required=True,
@@ -217,7 +217,7 @@ def visualize_energy_maps(args, config, dataset, model, plotter, energy_generato
 
 
 def main():
-    """Main visualization function."""
+    """Driver function."""
     args = parse_args()
     
     # Create configuration
@@ -230,7 +230,7 @@ def main():
     # Ensure output directory exists
     os.makedirs(config.output_path, exist_ok=True)
     
-    print("=== FLAME AI Challenge Visualization ===")
+    print("=== Visualization ===")
     print(f"Mode: {args.mode}")
     print(f"Split: {args.split}")
     print(f"Samples: {args.samples}")
@@ -241,6 +241,7 @@ def main():
     if config.device == 'cuda' and not torch.cuda.is_available():
         print("CUDA not available, switching to CPU")
         config.device = 'cpu'
+    print(f"Using device: {config.device}")
     
     # Load dataset
     print(f"Loading {args.split} dataset...")
