@@ -1,4 +1,4 @@
-"""Upsampling models for FLAME AI Challenge."""
+"""Upsampling models"""
 
 import torch
 import torch.nn as nn
@@ -9,35 +9,114 @@ import math
 from config.config import Config
 
 
-class SimpleUpsamplingModel(nn.Module):
-    """Simple upsampling model using interpolation."""
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.optim import Adam, AdamW, SGD
+
+# class SimpleUpsamplingModel(nn.Module):
+#     """Simple learnable upsampling model using transposed convolutions."""
     
-    def __init__(self, config: Config, mode: str = 'bilinear'):
-        """
-        Initialize simple upsampling model.
+#     def __init__(self, config, mode: str = 'bilinear'):
+#         """
+#         Initialize simple upsampling model.
         
-        Args:
-            config: Configuration object
-            mode: Upsampling mode ('nearest', 'bilinear', 'bicubic')
-        """
+#         Args:
+#             config: Configuration object
+#             mode: Upsampling mode (kept for compatibility, but we'll use learnable layers)
+#         """
+#         super().__init__()
+#         self.config = config
+#         self.mode = mode
+#         self.target_size = config.hr_shape
+        
+#         # Calculate upsampling factor
+#         lr_h, lr_w = config.lr_shape
+#         hr_h, hr_w = config.hr_shape
+#         self.scale_factor_h = hr_h // lr_h
+#         self.scale_factor_w = hr_w // lr_w
+        
+#         # Use learnable transposed convolution for upsampling
+#         # This maintains the number of channels (4) while upsampling spatially
+#         self.upsample_conv = nn.ConvTranspose2d(
+#             in_channels=4, 
+#             out_channels=4, 
+#             kernel_size=3, 
+#             stride=self.scale_factor_h,  # Assuming square upsampling
+#             padding=1, 
+#             output_padding=self.scale_factor_h-1,
+#             bias=True
+#         )
+        
+#         # Optional: Add a refinement layer
+#         self.refine = nn.Conv2d(4, 4, kernel_size=3, padding=1)
+        
+#         # Initialize weights properly
+#         self._initialize_weights()
+    
+#     def _initialize_weights(self):
+#         """Initialize weights to approximate bicubic interpolation."""
+#         for m in self.modules():
+#             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+#                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='linear')
+#                 if m.bias is not None:
+#                     nn.init.constant_(m.bias, 0)
+    
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         """
+#         Forward pass.
+        
+#         Args:
+#             x: Input tensor of shape (B, 4, m, m)
+            
+#         Returns:
+#             Upsampled tensor of shape (B, 4, c * m, c * m)
+#         """
+#         # Learnable upsampling
+#         upsampled = self.upsample_conv(x)
+        
+#         # Refinement
+#         refined = self.refine(upsampled)
+        
+#         # Ensure exact target size (handle any size mismatches)
+#         if refined.shape[-2:] != self.target_size:
+#             refined = F.interpolate(
+#                 refined, 
+#                 size=self.target_size, 
+#                 mode='bilinear', 
+#                 align_corners=False
+#             )
+        
+#         return refined
+    
+class SimpleUpsamplingModel(nn.Module):
+    """Minimal learnable model with just a few parameters."""
+    
+    def __init__(self, config, mode: str = 'bilinear'):
         super().__init__()
         self.config = config
-        self.mode = mode
         self.target_size = config.hr_shape
         
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass.
+        # Just add a simple learnable layer after interpolation
+        self.post_process = nn.Conv2d(4, 4, kernel_size=1, bias=True)
         
-        Args:
-            x: Input tensor of shape (B, 4, 16, 16)
-            
-        Returns:
-            Upsampled tensor of shape (B, 4, 128, 128)
-        """
-        return F.interpolate(x, size=self.target_size, mode=self.mode, align_corners=False)
-
-
+        # Initialize close to identity
+        nn.init.eye_(self.post_process.weight.squeeze())
+        nn.init.zeros_(self.post_process.bias)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # First do interpolation
+        upsampled = F.interpolate(
+            x, 
+            size=self.target_size, 
+            mode='bicubic', 
+            align_corners=False
+        )
+        
+        # Then apply learnable post-processing
+        output = self.post_process(upsampled)
+        return output
+    
 class ConvolutionalUpsamplingModel(nn.Module):
     """Convolutional upsampling model with learnable parameters."""
     
@@ -58,15 +137,15 @@ class ConvolutionalUpsamplingModel(nn.Module):
         
         # Upsampling layers using transpose convolution
         self.upsample_layers = nn.Sequential(
-            # 16x16 -> 32x32
+            # mxm -> 2m*2m
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
             nn.ReLU(inplace=True),
             
-            # 32x32 -> 64x64
+            # 2m*2m -> 4m*4m
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(inplace=True),
             
-            # 64x64 -> 128x128
+            # 4m*4m -> 8m*8m
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(inplace=True),
             
@@ -118,13 +197,13 @@ class ResidualUpsamplingModel(nn.Module):
         
         # Upsampling path
         self.upsample_conv1 = nn.Conv2d(64, 256, kernel_size=3, padding=1)
-        self.pixel_shuffle1 = nn.PixelShuffle(2)  # 16x16 -> 32x32
+        self.pixel_shuffle1 = nn.PixelShuffle(2)  # m -> 2m
         
         self.upsample_conv2 = nn.Conv2d(64, 256, kernel_size=3, padding=1)
-        self.pixel_shuffle2 = nn.PixelShuffle(2)  # 32x32 -> 64x64
+        self.pixel_shuffle2 = nn.PixelShuffle(2)  # 2m -> 4m
         
         self.upsample_conv3 = nn.Conv2d(64, 256, kernel_size=3, padding=1)
-        self.pixel_shuffle3 = nn.PixelShuffle(2)  # 64x64 -> 128x128
+        self.pixel_shuffle3 = nn.PixelShuffle(2)  # 4m -> 8m
         
         # Final output layer
         self.final_conv = nn.Conv2d(64, 4, kernel_size=9, padding=4)
@@ -264,7 +343,7 @@ class PhysicsInformedUpsamplingModel(nn.Module):
         drho_uy_dy = torch.gradient(rho * uy, dim=2)[0]
         continuity_loss = torch.mean((drho_ux_dx + drho_uy_dy)**2)
         
-        # Momentum conservation (simplified)
+        # Momentum conservation
         dux_dx = torch.gradient(ux, dim=3)[0]
         duy_dy = torch.gradient(uy, dim=2)[0]
         momentum_loss = torch.mean((dux_dx + duy_dy)**2)

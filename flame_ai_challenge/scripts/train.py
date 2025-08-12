@@ -18,7 +18,7 @@ from src.training.trainer import Trainer
 
 def parse_args():
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Train FLAME AI Challenge model')
+    parser = argparse.ArgumentParser(description='Train model')
     
     parser.add_argument('--model', type=str, default='residual',
                        choices=['simple', 'convolutional', 'residual', 'attention', 'physics'],

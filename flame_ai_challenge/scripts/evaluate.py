@@ -18,13 +18,13 @@ from src.evaluation.evaluator import ModelEvaluator
 
 def parse_args():
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Evaluate FLAME AI Challenge model')
+    parser = argparse.ArgumentParser(description='Evaluate model')
     
     parser.add_argument('--model', type=str, default='residual',
                        choices=['simple', 'convolutional', 'residual', 'attention', 'physics'],
                        help='Model architecture to use')
     
-    parser.add_argument('--checkpoint', type=str, required=True, default='/home/diya/Projects/physics_informed_super_resolution/flame_ai_challenge/outputs/train/best_model.pth',
+    parser.add_argument('--checkpoint', type=str, default='/home/diya/Projects/physics_informed_super_resolution/flame_ai_challenge/outputs/simple_model/train/best_model.pth',
                        help='Path to model checkpoint')
     
     parser.add_argument('--split', type=str, default='val',

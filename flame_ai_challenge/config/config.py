@@ -9,7 +9,7 @@ class Config:
     """Configuration class"""
     # Data configuration
     input_path: str = '/home/diya/Projects/physics_informed_super_resolution/flame_ai_challenge/dataset/'
-    output_path: str = '/home/diya/Projects/physics_informed_super_resolution/flame_ai_challenge/outputs/'
+    output_path: str = '/home/diya/Projects/physics_informed_super_resolution/flame_ai_challenge/outputs/simple_model/'
     
     # Normalization parameters
     mean: List[float] = None

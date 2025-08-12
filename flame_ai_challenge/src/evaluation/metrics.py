@@ -26,16 +26,21 @@ def calculate_psnr(pred: torch.Tensor, target: torch.Tensor, max_val: float = 1.
     return psnr.item()
 
 
-def calculate_ssim(pred: torch.Tensor, target: torch.Tensor) -> float:
+import torch
+import numpy as np
+from skimage.metrics import structural_similarity as ssim
+
+def calculate_ssim(pred: torch.Tensor, target: torch.Tensor, eps: float = 1e-8) -> float:
     """
-    Calculate Structural Similarity Index (SSIM).
+    Calculate Structural Similarity Index (SSIM)
     
     Args:
         pred: Predicted tensor of shape (B, C, H, W)
         target: Target tensor of shape (B, C, H, W)
+        eps: Small epsilon value to avoid division by zero (default: 1e-8)
         
     Returns:
-        Average SSIM value across channels
+        Average SSIM value across channels (returns 0.0 if all values are invalid)
     """
     # Convert to numpy and calculate SSIM for each channel
     pred_np = pred.detach().cpu().numpy()
@@ -46,15 +51,42 @@ def calculate_ssim(pred: torch.Tensor, target: torch.Tensor) -> float:
     
     for b in range(batch_size):
         for c in range(channels):
-            ssim_val = ssim(
-                target_np[b, c], 
-                pred_np[b, c], 
-                data_range=target_np[b, c].max() - target_np[b, c].min()
-            )
+            target_channel = target_np[b, c]
+            pred_channel = pred_np[b, c]
+            
+            # Calculate data range, avoiding division by zero
+            data_range = target_channel.max() - target_channel.min()
+            if data_range < eps:
+                # If target has no variation, check if prediction matches
+                if np.allclose(pred_channel, target_channel, atol=eps):
+                    ssim_val = 1.0  # Perfect match for constant images
+                else:
+                    ssim_val = 0.0  # Mismatch for constant target
+            else:
+                try:
+                    ssim_val = ssim(
+                        target_channel, 
+                        pred_channel, 
+                        data_range=data_range
+                    )
+                    
+                    # Handle NaN or infinite values
+                    if not np.isfinite(ssim_val):
+                        ssim_val = 0.0
+                        
+                except Exception as e:
+                    # Fallback in case of any other errors
+                    ssim_val = 0.0
+            
             ssim_values.append(ssim_val)
     
-    return np.mean(ssim_values)
-
+    # Filter out any remaining NaN values and calculate mean
+    valid_ssim_values = [val for val in ssim_values if np.isfinite(val)]
+    
+    if len(valid_ssim_values) == 0:
+        return 0.0
+    
+    return np.mean(valid_ssim_values)
 
 def calculate_mse(pred: torch.Tensor, target: torch.Tensor) -> float:
     """Calculate Mean Squared Error."""

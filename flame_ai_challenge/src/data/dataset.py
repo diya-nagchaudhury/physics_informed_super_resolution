@@ -12,7 +12,7 @@ from config.config import Config
 
 
 class FLAMEAIDataset(Dataset):
-    """Dataset class for FLAME AI Challenge flow field data."""
+    """Dataset class for flow field data."""
     
     def __init__(self, split: str, config: Config, apply_norm: bool = True):
         """
